@@ -1,12 +1,8 @@
-import './App.css'
+import Layout from './components/Layout'
 
 function App() {
   return (
-    <>
-      <p className="read-the-docs">
-        OT-docs
-      </p>
-    </>
+    <Layout />
   )
 }
 
