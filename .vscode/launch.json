@@ -1,0 +1,14 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-OtDocApplication<ot_doc>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "xyz.weiuou.ot_doc.OtDocApplication",
+      "projectName": "ot_doc",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}
