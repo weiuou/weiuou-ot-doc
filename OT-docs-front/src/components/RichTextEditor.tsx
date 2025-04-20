@@ -16,6 +16,7 @@ interface OperationRecord {
 }
 
 const RichTextEditor: React.FC = () => {
+  // const { theme } = useThemeStore();
   const [value, setValue] = useState<string | undefined>("**Hello Markdown!**");
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [operations, setOperations] = useState<Operation[]>([]);
@@ -133,16 +134,12 @@ const RichTextEditor: React.FC = () => {
       } else {
         op = { type: 'insert', position: start, content: data };
       }
-      // 记录操作
+      // 更新内容和记录操作
       setOperations((prev) => [...prev, op]);
       setOperationRecords((prev) => [...prev, { operation: op, source: 'local' }]);
       // 立即同步到后端
       saveContent(value);
-      // 发送 WebSocket 消息
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify(op));
-        pendingOpsRef.current.push(op);
-      }
+      // 不在这里发送 WebSocket 消息，统一由 useEffect([operations]) 处理
     }
     setCompositionRange(null);
     // 下一个事件循环重置标记
@@ -154,36 +151,8 @@ const RichTextEditor: React.FC = () => {
   // 处理操作
   const handleOperation = (operation: Operation, isRemote: boolean = false) => {
     if (!isRemote) {
-      if (value === undefined) return;
-      const textarea = editorRef.current?.querySelector('textarea');
-      const position = operation.position ?? textarea?.selectionStart ?? value.length;
-      let newValue = value;
-      switch (operation.type) {
-        case 'insert': {
-          const before = value.slice(0, position);
-          const after = value.slice(position);
-          newValue = `${before}${operation.content ?? ''}${after}`;
-          break;
-        }
-        case 'delete': {
-          const before = value.slice(0, position);
-          const after = value.slice(position + (operation.length ?? 0));
-          newValue = `${before}${after}`;
-          break;
-        }
-        case 'replace': {
-          const before = value.slice(0, position);
-          const after = value.slice(position + (operation.length ?? 0));
-          newValue = `${before}${operation.content ?? ''}${after}`;
-          break;
-        }
-        default:
-          break;
-      }
-      setValue(newValue);
-      setOperations((prev) => [...prev, operation]);
-      setOperationRecords((prev) => [...prev, { operation, source: 'local' }]);
-      saveContent(newValue);  // newValue 在这里一定是 string
+      // 本地操作不做任何处理，全部交由 onChange 统一处理
+      return;
     } else {
       // 远程操作，必须用 setValue 的回调，确保顺序
       setValue(prev => {
@@ -218,9 +187,9 @@ const RichTextEditor: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col">
-      <div ref={editorRef} className="flex-1 flex lg:flex-row flex-col overflow-hidden">
-        <div className="flex-1 h-full">
+    <div className="fixed inset-0 pt-24 w-full flex flex-col">
+      <div ref={editorRef} className="flex-1 flex lg:flex-row flex-col">
+        <div className="flex-1 h-full overflow-hidden">
           <MDEditor
             value={value}
             onChange={(newValue) => {
@@ -299,15 +268,16 @@ const RichTextEditor: React.FC = () => {
             onCompositionEnd={handleCompositionEnd}
             height="100%"
             className="w-full h-full"
+            preview="edit"
           />
         </div>
-        <div className="flex-1 h-full p-4 bg-white rounded-lg shadow-sm overflow-auto">
+        <div className={`flex-1 h-full p-4 overflow-auto border-l border-gray-200 dark:border-gray-700`}>
           <MDEditor.Markdown source={value} />
         </div>
       </div>
-      <div className="p-4 bg-gray-100 border-t border-gray-300">
-        <h3 className="text-lg font-bold mb-2">操作记录:</h3>
-        <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
+      <div className={`p-4 border-t`}>
+        <h3 className={`text-lg font-bold mb-2`}>操作记录:</h3>
+        <div className="max-h-32 overflow-y-auto">
           <ul className="list-disc pl-5">
             {operationRecords.map((rec, index) => (
               <li key={index} style={{ color: rec.source === 'local' ? '#2563eb' : '#059669' }}>
